@@ -70,11 +70,6 @@ dataset/
     └── ...
 ```
 
-**Important**: 
-- Folder name = class/label name
-- Supported image formats: JPG, JPEG, PNG
-- Recommended minimum 50-100 images per class for optimal results
-
 ## 💻 Usage Guide
 
 ### 1. Training Model
@@ -195,5 +190,6 @@ This project was developed as an undergraduate thesis by:
 
 
 **Disclaimer:** This is an academic project developed as part of an undergraduate thesis requirement. The software is provided "as-is" without warranty of any kind. The authors and Universitas Mikroskil Medan are not liable for any damages or issues arising from the use of this software.
+
 
 
