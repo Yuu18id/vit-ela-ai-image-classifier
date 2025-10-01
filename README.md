@@ -90,11 +90,9 @@ dataset/
 - **GPU users**: 
   - Use batch size 32-64 for optimal speed
   - Enable mixed precision (FP16) - already enabled in code
-  - Training 1000 images for 10 epochs: ~10-30 minutes
 - **CPU users**: 
   - Use smaller batch size (8-16) to avoid OOM
   - Disable FP16 by editing `app.py`: set `fp16=False` in TrainingArguments
-  - Training 1000 images for 10 epochs: ~2-6 hours
   - Consider using smaller datasets or pre-trained models
 
 ### 2. Load Model
@@ -190,6 +188,7 @@ This project was developed as an undergraduate thesis by:
 
 
 **Disclaimer:** This is an academic project developed as part of an undergraduate thesis requirement. The software is provided "as-is" without warranty of any kind. The authors and Universitas Mikroskil Medan are not liable for any damages or issues arising from the use of this software.
+
 
 
 
