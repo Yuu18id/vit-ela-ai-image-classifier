@@ -28,8 +28,8 @@ A web application for image classification using Vision Transformer (ViT) with E
 
 1. **Clone repository**
 ```bash
-git clone <repository-url>
-cd ai-image-classifier
+git clone https://github.com/Yuu18id/vit-ela-ai-image-classifier
+cd vit-ela-ai-image-classifier
 ```
 
 2. **Python Dependencies**
@@ -190,6 +190,7 @@ This project was developed as an undergraduate thesis by:
 
 
 **Disclaimer:** This is an academic project developed as part of an undergraduate thesis requirement. The software is provided "as-is" without warranty of any kind. The authors and Universitas Mikroskil Medan are not liable for any damages or issues arising from the use of this software.
+
 
 
 
