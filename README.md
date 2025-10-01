@@ -35,13 +35,13 @@ cd ai-image-classifier
 2. **Python Dependencies**
 
 For CUDA-enabled systems (GPU):
-```pip
-install -r requirements-gpu.txt
+```
+pip install -r requirements-gpu.txt
 ```
 
 For CPU-only systems:
-```pip
-install -r requirements-cpu.txt
+```
+pip install -r requirements-cpu.txt
 ```
 
 3. **Run the application**
@@ -195,4 +195,5 @@ This project was developed as an undergraduate thesis by:
 
 
 **Disclaimer:** This is an academic project developed as part of an undergraduate thesis requirement. The software is provided "as-is" without warranty of any kind. The authors and Universitas Mikroskil Medan are not liable for any damages or issues arising from the use of this software.
+
 
