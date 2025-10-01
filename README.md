@@ -154,15 +154,6 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 This software was developed as part of academic research at Universitas Mikroskil. The code is released under MIT License for educational, research, and non-commercial purposes.
 
-## 👥 Contributing
-
-Contributions are always welcome! Please:
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
 ## 📞 Support
 
 For questions or issues, please open an issue in this repository.
@@ -188,6 +179,7 @@ This project was developed as an undergraduate thesis by:
 
 
 **Disclaimer:** This is an academic project developed as part of an undergraduate thesis requirement. The software is provided "as-is" without warranty of any kind. The authors and Universitas Mikroskil Medan are not liable for any damages or issues arising from the use of this software.
+
 
 
 
