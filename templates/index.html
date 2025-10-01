@@ -1,0 +1,263 @@
+<!-- templates/index.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h3>Image Classification</h3>
+            </div>
+            <div class="card-body">
+                {% if not model_loaded %}
+                <div class="alert alert-warning">
+                    No model is currently loaded. Please <a href="/train">train a model</a> or
+                    <button id="loadModelBtn" class="btn btn-sm btn-primary">load a pre-trained model</button>
+                </div>
+                {% else %}
+                <div class="alert alert-success">
+                    Model loaded successfully! Classes: {{ labels|join(', ') }}
+                    <button id="unloadModelBtn" class="btn btn-sm btn-danger ms-3">Unload Model</button>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">Upload Image</div>
+                            <div class="card-body">
+                                <form id="classifyForm" enctype="multipart/form-data">
+                                    <div class="mb-3">
+                                        <label for="imageUpload" class="form-label">Choose an image:</label>
+                                        <div class="input-group">
+                                            <label class="input-group-text btn btn-primary" for="imageUpload">Select
+                                                Image</label>
+                                            <input type="file" class="form-control d-none" id="imageUpload" name="image"
+                                                accept=".jpg,.jpeg,.png">
+                                            <input type="text" class="form-control" id="namaFile"
+                                                placeholder="No file selected" disabled>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary" id="classifyBtn" {% if not
+                                        model_loaded %}disabled{% endif %}>
+                                        <span class="spinner-border spinner-border-sm" id="classifySpinner"
+                                            role="status" aria-hidden="true"></span>
+                                        Classify Image
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">Classification Results</div>
+                            <div class="card-body">
+                                <div id="results">
+                                    <p class="text-muted">Upload an image to see classification results.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-4" id="imageResultsRow">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">Original Image</div>
+                            <div class="card-body text-center">
+                                <img id="originalImage" class="img-fluid d-none" style="max-height: 300px;">
+                                <p id="originalImagePlaceholder" class="text-muted">Upload an image to display the
+                                    original image.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">ELA Image</div>
+                            <div class="card-body text-center">
+                                <img id="elaImage" class="img-fluid d-none" style="max-height: 300px;">
+                                <p id="elaImagePlaceholder" class="text-muted">Upload an image to display the ELA
+                                    image.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const loadModelBtn = document.getElementById('loadModelBtn');
+        const unloadModelBtn = document.getElementById('unloadModelBtn');
+        const classifyForm = document.getElementById('classifyForm');
+        const classifyBtn = document.getElementById('classifyBtn');
+        const classifySpinner = document.getElementById('classifySpinner');
+        const resultsDiv = document.getElementById('results');
+        const imageResultsRow = document.getElementById('imageResultsRow');
+        const originalImage = document.getElementById('originalImage');
+        const elaImage = document.getElementById('elaImage');
+        const originalImagePlaceholder = document.getElementById('originalImagePlaceholder');
+        const elaImagePlaceholder = document.getElementById('elaImagePlaceholder');
+        const imageUploadInput = document.getElementById("imageUpload");
+        const namaFileInput = document.getElementById("namaFile");
+        if (imageUploadInput && namaFileInput) {
+        imageUploadInput.addEventListener("change", function () {
+            const fileName = this.files.length > 0 ? this.files[0].name : "No file selected";
+            namaFileInput.value = fileName;
+        });
+    }
+
+
+        // Load model button handler
+        if (loadModelBtn) {
+            loadModelBtn.addEventListener('click', function () {
+                loadModelBtn.disabled = true;
+                loadModelBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...';
+
+                fetch('/load_model')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            location.reload();
+                        } else {
+                            alert('Error: ' + data.message);
+                            loadModelBtn.disabled = false;
+                            loadModelBtn.textContent = 'Load Pre-trained Model';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('An error occurred while loading the model');
+                        loadModelBtn.disabled = false;
+                        loadModelBtn.textContent = 'Load Pre-trained Model';
+                    });
+            });
+        }
+
+        // Unload model button handler
+        if (unloadModelBtn) {
+            unloadModelBtn.addEventListener('click', function () {
+                if (!confirm('Are you sure you want to unload the model? You will need to reload it to classify images.')) {
+                    return;
+                }
+
+                unloadModelBtn.disabled = true;
+                unloadModelBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Unloading...';
+
+                fetch('/unload_model')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            location.reload();
+                        } else {
+                            alert('Error: ' + data.message);
+                            unloadModelBtn.disabled = false;
+                            unloadModelBtn.textContent = 'Unload Model';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('An error occurred while unloading the model');
+                        unloadModelBtn.disabled = false;
+                        unloadModelBtn.textContent = 'Unload Model';
+                    });
+            });
+        }
+
+        // Classify form submit handler
+        if (classifyForm) {
+            classifyForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                const formData = new FormData(classifyForm);
+                const fileInput = document.getElementById('imageUpload');
+
+                if (fileInput.files.length === 0) {
+                    alert('Please select an image file');
+                    return;
+                }
+
+                // Show spinner
+                classifyBtn.disabled = true;
+                classifySpinner.style.display = 'inline-block';
+
+                // Display original image
+                const file = fileInput.files[0];
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    originalImage.src = e.target.result;
+                    originalImage.classList.remove('d-none');
+                    originalImagePlaceholder.classList.add('d-none');
+                };
+                reader.readAsDataURL(file);
+
+                fetch('/classify', {
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            // Display results
+                            let resultsHTML = `
+                            <h4>Main Prediction: ${data.prediction}</h4>
+                            <p>Confidence: ${(data.confidence * 100).toFixed(2)}%</p>
+                            
+                            <h5 class="mt-3">All Predictions:</h5>
+                            <div class="mt-2">
+                        `;
+
+                            data.all_predictions.forEach(pred => {
+                                const prob = pred.probability * 100;
+                                let confidenceClass = 'prediction-low';
+
+                                if (prob > 70) {
+                                    confidenceClass = 'prediction-high';
+                                } else if (prob > 30) {
+                                    confidenceClass = 'prediction-medium';
+                                }
+
+                                resultsHTML += `
+                                <div class="prediction-box ${confidenceClass}">
+                                    <strong>${pred.label}:</strong> ${prob.toFixed(2)}%
+                                </div>
+                            `;
+                            });
+
+                            resultsHTML += `</div>`;
+                            resultsDiv.innerHTML = resultsHTML;
+
+                            // Display ELA image
+                            elaImage.src = data.ela_image + '?t=' + new Date().getTime();
+
+                            elaImage.classList.remove('d-none');
+                            elaImagePlaceholder.classList.add('d-none');
+                            imageResultsRow.style.display = 'flex';
+
+                            // Reset form
+                            classifyBtn.disabled = false;
+                            classifySpinner.style.display = 'none';
+                        } else {
+                            resultsDiv.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+                            classifyBtn.disabled = false;
+                            classifySpinner.style.display = 'none';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        resultsDiv.innerHTML = '<div class="alert alert-danger">An error occurred during classification</div>';
+                        classifyBtn.disabled = false;
+                        classifySpinner.style.display = 'none';
+                    });
+            });
+        }
+    });
+</script>
+{% endblock %}

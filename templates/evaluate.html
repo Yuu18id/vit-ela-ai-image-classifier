@@ -1,0 +1,461 @@
+<!-- templates/evaluate.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <!-- Initial Evaluation Setup Section -->
+        <div class="card mb-4" id="evaluation-setup" style="display: block;">
+            <div class="card-header">
+                <h3>Model Evaluation</h3>
+            </div>
+            <div class="card-body">
+                {% if not model_loaded %}
+                <div class="alert alert-warning">
+                    No model is currently loaded. Please <a href="/">load a model</a> or <a href="/train">train a new model</a>.
+                </div>
+                {% else %}
+
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">Evaluation</div>
+                            <div class="card-body">
+                                <form action="/evaluate" method="post" enctype="multipart/form-data"
+                                    id="evaluation-form">
+                                    <div class="form-group">
+                                        <label for="eval_dataset" class="form-label">Evaluation Dataset Folder</label>
+                                        <div class="input-group">
+                                            <label class="input-group-text btn btn-primary" for="eval_dataset">Choose Folder</label>
+                                            <input type="file" class="form-control d-none" id="eval_dataset" name="eval_dataset"
+                                                webkitdirectory directory multiple required>
+                                            <input type="text" class="form-control" id="namaFolder"
+                                                placeholder="No folder selected" disabled>
+                                        </div>
+                                        <small class="form-text text-muted">
+                                            Select a dataset folder containing subfolders for each category, where each subfolder contains image files.
+                                        </small>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-primary mt-3" id="start-evaluation-btn">Start Evaluation</button>
+                                </form>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">Classification Report</div>
+                            <div class="card-body">
+                                <table class="table table-bordered table-hover" id="classification-table">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Class</th>
+                                            <th>Precision</th>
+                                            <th>Recall</th>
+                                            <th>F1-score</th>
+                                            <th>Support</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="classification-tbody">
+                                        <!-- Results will be populated here dynamically -->
+                                    </tbody>
+                                </table>
+
+                                <div class="mt-3">
+                                    <div class="alert alert-info">
+                                        <p class="mb-1"><strong>Overall Accuracy:</strong> <span
+                                                id="overall-accuracy">-</span></p>
+                                        <p class="mb-0"><strong>Total Images Evaluated:</strong> <span
+                                                id="total-images">-</span></p>
+                                    </div>
+                                </div>
+
+                                <!-- Missing class names section -->
+                                <div class="mt-3" style="display: none;">
+                                    <div id="class-names" class="badge badge-secondary">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-4" id="imageResultsRow">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">ROC Curve</div>
+                            <div class="card-body text-center">
+                                <img id="roc-img" src="/static/results/ROC.png" class="img-fluid" alt="ROC Curve"
+                                    style="max-width: 100%; height: auto;">
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">Confusion Matrix</div>
+                            <div class="card-body text-center">
+                                <img id="confusion-matrix-img" src="/static/results/confusion_matrix.png"
+                                    class="img-fluid" alt="Confusion Matrix" style="max-width: 100%; height: auto;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Evaluation Progress Section (Initially Hidden) -->
+        <div class="card mb-4" id="evaluation-progress" style="display: none;">
+            <div class="card-header">
+                <h3>Model Evaluation in Progress..</h3>
+            </div>
+            <div class="card-body">
+                <div class="progress mb-4">
+                    <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated"
+                        role="progressbar" style="width: 0%">
+                        0%
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        Evaluation Log
+                    </div>
+                    <div class="card-body">
+                        <div id="log-content"
+                            style="max-height: 300px; overflow-y: auto; background-color: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace;">
+                            <!-- Log entries will be added here dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <div id="result-actions" class="mt-4" style="display: none;">
+                    <button onclick="window.location.href='/evaluate'" class="btn btn-success">View Evaluation Results</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const folderUploadInput = document.getElementById("eval_dataset");
+        const namaFolderInput = document.getElementById("namaFolder");
+        folderUploadInput.addEventListener("change", function () {
+            if (folderUploadInput.files.length > 0) {
+                const firstFilePath = folderUploadInput.files[0].webkitRelativePath;
+                const folderName = firstFilePath.split('/')[0];
+                namaFolderInput.value = folderName;
+            } else {
+                namaFolderInput.value = "No folder has been selected yet.";
+            }
+        });
+    let progressInterval;
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // Only try to show results if there are previous results
+        // Otherwise, show the setup section
+        checkForPreviousResults();
+    });
+
+    // Submit form via AJAX to prevent page reload
+    document.getElementById('evaluation-form')?.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        const startBtn = document.getElementById('start-evaluation-btn');
+
+        // Disable button and show loading state
+        startBtn.disabled = true;
+        startBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Mulai...';
+
+        // Show progress section and hide setup section
+        document.getElementById('evaluation-setup').style.display = 'none';
+        document.getElementById('evaluation-progress').style.display = 'block';
+
+        // Submit form data
+        fetch('/evaluate', {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Start progress tracking
+                    startProgressTracking();
+                } else {
+                    // Show error and reset
+                    alert('Error: ' + data.message);
+                    resetEvaluation();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while starting the evaluation.');
+                resetEvaluation();
+            });
+    });
+
+    // Function to start tracking progress
+    function startProgressTracking() {
+        // Initial update
+        updateProgress();
+
+        // Update progress every 2 seconds
+        progressInterval = setInterval(updateProgress, 2000);
+    }
+
+    // Function to update progress
+    function updateProgress() {
+        fetch('/api/evaluation_progress')
+            .then(response => response.json())
+            .then(data => {
+                // Update progress bar
+                const progressBar = document.getElementById('progress-bar');
+                progressBar.style.width = data.progress + '%';
+                progressBar.textContent = data.progress + '%';
+
+                // Update log
+                const logContent = document.getElementById('log-content');
+                logContent.innerHTML = '';
+                data.log.forEach(entry => {
+                    const p = document.createElement('p');
+                    p.textContent = entry;
+                    p.style.margin = '2px 0';
+                    p.style.fontSize = '12px';
+                    logContent.appendChild(p);
+                });
+
+                // Scroll to bottom of log
+                logContent.scrollTop = logContent.scrollHeight;
+
+                // Show results button if complete
+                if (data.is_complete) {
+                    document.getElementById('result-actions').style.display = 'block';
+                    clearInterval(progressInterval);
+
+                    // Update progress bar to completed state
+                    progressBar.classList.remove('progress-bar-animated');
+                    if (data.progress === 100) {
+                        progressBar.classList.add('bg-success');
+                    } else {
+                        progressBar.classList.add('bg-warning');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching progress:', error);
+                // Don't stop the interval immediately, try a few more times
+            });
+    }
+
+    // Function to check for previous results and display appropriately
+    function checkForPreviousResults() {
+        // Add cache buster to avoid cached results
+        const cacheBuster = '?t=' + new Date().getTime();
+
+        // Try to fetch previous results
+        fetch('/static/results/evaluation_results.json' + cacheBuster)
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error('No previous results found');
+                }
+            })
+            .then(data => {
+                // Previous results exist, show them
+                console.log('Previous results found, displaying...');
+                showResults();
+            })
+            .catch(error => {
+                // No previous results, show setup section
+                console.log('No previous results, showing setup section');
+                document.getElementById('evaluation-setup').style.display = 'block';
+                document.getElementById('evaluation-progress').style.display = 'none';
+            });
+    }
+
+    // Function to show results section
+    function showResults() {
+        console.log('showResults() called');
+
+        // Show setup section first (it contains the results display)
+        document.getElementById('evaluation-setup').style.display = 'block';
+        document.getElementById('evaluation-progress').style.display = 'none';
+
+        // Add cache buster to avoid cached results
+        const cacheBuster = '?t=' + new Date().getTime();
+
+        // Update confusion matrix image with cache buster
+        const confusionImg = document.getElementById('confusion-matrix-img');
+        if (confusionImg) {
+            confusionImg.src = '/static/results/confusion_matrix.png' + cacheBuster;
+        }
+
+        // Update ROC curve image with cache buster
+        const rocImg = document.getElementById('roc-img');
+        if (rocImg) {
+            rocImg.src = '/static/results/ROC.png' + cacheBuster;
+        }
+
+        // Fetch and display results
+        fetch('/static/results/evaluation_results.json' + cacheBuster)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Results file not found');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Results data loaded:', data);
+
+                // Clear and populate classification table
+                const tbody = document.getElementById('classification-tbody');
+                if (tbody) {
+                    tbody.innerHTML = '';
+
+                    // Add class rows
+                    for (const [className, metrics] of Object.entries(data.classification_report)) {
+                        if (!['accuracy', 'macro avg', 'weighted avg'].includes(className)) {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td><strong>${className}</strong></td>
+                                <td>${(metrics.precision * 100).toFixed(1)}%</td>
+                                <td>${(metrics.recall * 100).toFixed(1)}%</td>
+                                <td>${(metrics['f1-score'] * 100).toFixed(1)}%</td>
+                                <td>${metrics.support}</td>
+                            `;
+                            tbody.appendChild(row);
+                        }
+                    }
+
+                    // Add weighted average row
+                    if (data.classification_report['weighted avg']) {
+                        const avg = data.classification_report['weighted avg'];
+                        const avgRow = document.createElement('tr');
+                        avgRow.className = 'table-secondary';
+                        avgRow.innerHTML = `
+                            <td><strong>Weighted Average</strong></td>
+                            <td><strong>${(avg.precision * 100).toFixed(1)}%</strong></td>
+                            <td><strong>${(avg.recall * 100).toFixed(1)}%</strong></td>
+                            <td><strong>${(avg['f1-score'] * 100).toFixed(1)}%</strong></td>
+                            <td><strong>${avg.support}</strong></td>
+                        `;
+                        tbody.appendChild(avgRow);
+                    }
+                }
+
+                // Update summary statistics
+                const accuracyElement = document.getElementById('overall-accuracy');
+                if (accuracyElement) {
+                    accuracyElement.textContent = (data.classification_report.accuracy * 100).toFixed(2) + '%';
+                }
+
+                const totalImagesElement = document.getElementById('total-images');
+                if (totalImagesElement) {
+                    totalImagesElement.textContent = data.num_eval_images;
+                }
+
+                // Create class names badges
+                const classNamesElement = document.getElementById('class-names');
+                if (classNamesElement && data.label_names) {
+                    classNamesElement.innerHTML = '';
+                    data.label_names.forEach((className, index) => {
+                        const badge = document.createElement('span');
+                        badge.className = 'badge badge-primary mr-1';
+                        badge.textContent = className;
+                        classNamesElement.appendChild(badge);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching results:', error);
+                alert('An error occurred while loading the evaluation results. Make sure the evaluation process has been completed successfully.');
+                resetEvaluation();
+            });
+    }
+
+    // Function to reset evaluation (go back to setup)
+    function resetEvaluation() {
+        document.getElementById('evaluation-setup').style.display = 'block';
+        document.getElementById('evaluation-progress').style.display = 'none';
+
+        // Reset form
+        const form = document.getElementById('evaluation-form');
+        if (form) {
+            form.reset();
+        }
+
+        // Reset button state
+        const startBtn = document.getElementById('start-evaluation-btn');
+        if (startBtn) {
+            startBtn.disabled = false;
+            startBtn.innerHTML = 'Start Evaluation';
+        }
+
+        // Clear progress
+        const progressBar = document.getElementById('progress-bar');
+        if (progressBar) {
+            progressBar.style.width = '0%';
+            progressBar.textContent = '0%';
+            progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated';
+        }
+
+        // Clear log
+        const logContent = document.getElementById('log-content');
+        if (logContent) {
+            logContent.innerHTML = '';
+        }
+
+        // Hide result actions
+        const resultActions = document.getElementById('result-actions');
+        if (resultActions) {
+            resultActions.style.display = 'none';
+        }
+
+        if (progressInterval) {
+            clearInterval(progressInterval);
+        }
+    }
+
+
+    // Handle page unload to clear intervals
+    window.addEventListener('beforeunload', function () {
+        if (progressInterval) {
+            clearInterval(progressInterval);
+        }
+    });
+</script>
+
+<style>
+    .badge {
+        font-size: 0.8em;
+        padding: 0.4em 0.6em;
+    }
+
+    .table th {
+        border-top: none;
+    }
+
+    .spinner-border-sm {
+        width: 1rem;
+        height: 1rem;
+    }
+
+    #log-content p {
+        word-wrap: break-word;
+        white-space: pre-wrap;
+    }
+
+    .progress {
+        height: 1.5rem;
+    }
+
+    .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+    }
+</style>
+{% endblock %}

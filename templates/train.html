@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h3>Model Training</h3>
+            </div>
+            <div class="card-body">
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">Train</div>
+                            <div class="card-body">
+                                <!-- Input file with webkitdirectory attribute -->
+                                <form id="trainForm" enctype="multipart/form-data">
+                                    <div class="mb-3">
+                                        <label for="dataset" class="form-label">Dataset Folder</label>
+                                        <div class="input-group">
+                                            <label class="input-group-text btn btn-primary" for="dataset">Choose Folder</label>
+                                            <input type="file" class="form-control d-none" id="dataset" name="dataset"
+                                                webkitdirectory directory multiple required>
+                                            <input type="text" class="form-control" id="namaFolder"
+                                                placeholder="No folder selected" disabled>
+                                        </div>
+                                        <small class="form-text text-muted">
+                                            Select a dataset folder containing subfolders for each category, where each subfolder contains image files.
+                                        </small>
+                                    </div>
+
+                                    <!-- Training Parameters -->
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="learning_rate" class="form-label">Learning Rate</label>
+                                                <input type="number" class="form-control" id="learning_rate"
+                                                    name="learning_rate" value="0.0003" min="0.0000001" max="0.1"
+                                                    step="0.0000001">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="train_split" class="form-label">Dataset Split (Train:Test)</label>
+                                                <select class="form-control" id="train_split" name="train_split">
+                                                    <option value="0.3">70:30</option>
+                                                    <option value="0.2" selected>80:20</option>
+                                                    <option value="0.1">90:10</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="epochs" class="form-label">Epochs</label>
+                                                <input type="number" class="form-control" id="epochs" name="epochs"
+                                                    value="10" min="1" max="100" step="1">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="batch_size" class="form-label">Batch Size</label>
+                                                <input type="number" class="form-control" id="batch_size"
+                                                    name="batch_size" value="32" min="1" max="128" step="1">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-primary" id="trainBtn">
+                                        <span class="spinner-border spinner-border-sm" id="trainSpinner" role="status"
+                                            aria-hidden="true" style="display: none;"></span>
+                                        Start Training
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <!-- Status Ready to Train (Default) -->
+                        <div class="mt-4" id="readyStatus">
+                            <div class="alert alert-secondary">
+                                <h4>Ready to Train</h4>
+                                <p>Configure the training parameters and select a dataset folder to start the training process.</p>
+                            </div>
+                        </div>
+
+                        <!-- Status Training in Progress (Hidden by default) -->
+                        <div class="mt-4" id="trainingStatus" style="display: none;">
+                            <div class="alert alert-info">
+                                <h4>Training in Progress...</h4>
+                                <p id="progressText">0% completed</p>
+                                <div class="progress mb-3">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                        id="progressBar" role="progressbar" style="width: 0%"></div>
+                                </div>
+                                <div class="mt-2" id="logMessages"
+                                    style="max-height: 150px; overflow-y: auto; font-family: monospace; background-color: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #dee2e6;">
+                                    <small class="text-muted">Training logs will appear here...</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Status Training Completed (Hidden by default) -->
+                        <div class="mt-4" id="completedStatus" style="display: none;">
+                            <div class="alert alert-success">
+                                <h4>Training Completed!</h4>
+                                <p>The model has been saved. You can now use it for image classification or model evaluation.</p>
+                                <div class="mt-2">
+                                    <a href="/" class="btn btn-success btn-sm">
+                                        <i class="fas fa-play"></i> Image Classification
+                                    </a>
+                                    <button id="trainAgainBtn" class="btn btn-outline-primary btn-sm ms-2">
+                                        <i class="fas fa-redo"></i> Train Another Model
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4" id="trainingResults" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Event delegation for folder input
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.id === 'dataset') {
+            const namaFolderInput = document.getElementById("namaFolder");
+            if (namaFolderInput) {
+                if (e.target.files.length > 0) {
+                    const firstFilePath = e.target.files[0].webkitRelativePath;
+                    const folderName = firstFilePath.split('/')[0];
+                    namaFolderInput.value = folderName;
+                } else {
+                    namaFolderInput.value = "No folder selected";
+                }
+            }
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const trainForm = document.getElementById('trainForm');
+        const trainBtn = document.getElementById('trainBtn');
+        const trainSpinner = document.getElementById('trainSpinner');
+        const readyStatus = document.getElementById('readyStatus');
+        const trainingStatus = document.getElementById('trainingStatus');
+        const completedStatus = document.getElementById('completedStatus');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const logMessages = document.getElementById('logMessages');
+        const trainingResults = document.getElementById('trainingResults');
+        const trainAgainBtn = document.getElementById('trainAgainBtn');
+
+        let progressInterval = null;
+
+        trainForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const datasetInput = document.getElementById('dataset');
+            if (datasetInput.files.length === 0) {
+                alert('Please select a dataset folder first');
+                return;
+            }
+
+            // Validate training parameters
+            const trainSplit = document.getElementById('train_split').value;
+            const learningRate = document.getElementById('learning_rate').value;
+            const epochs = document.getElementById('epochs').value;
+            const batchSize = document.getElementById('batch_size').value;
+
+            console.log('Training Parameters:', {
+                train_split: trainSplit,
+                learning_rate: learningRate,
+                epochs: epochs,
+                batch_size: batchSize
+            });
+
+            // Switch to training status
+            showTrainingStatus();
+
+            const formData = new FormData(trainForm);
+
+            fetch('/train', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Start polling training progress
+                        progressInterval = setInterval(fetchProgress, 2000);
+                    } else {
+                        showErrorStatus(data.message || 'An error occurred while starting training');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showErrorStatus('Failed to contact server to start training');
+                });
+        });
+
+        function showTrainingStatus() {
+            disableAllLinks();
+
+            trainBtn.disabled = true;
+            trainSpinner.style.display = 'inline-block';
+            trainBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Training...';
+
+            readyStatus.style.display = 'none';
+            trainingStatus.style.display = 'block';
+            completedStatus.style.display = 'none';
+            trainingResults.style.display = 'none';
+
+            progressBar.style.width = '0%';
+            progressText.textContent = '0% completed';
+            logMessages.innerHTML = '<small class="text-muted">Initializing...</small>';
+        }
+
+        function showCompletedStatus() {
+            enableAllLinks();
+
+            trainBtn.disabled = false;
+            trainSpinner.style.display = 'none';
+            trainBtn.innerHTML = 'Start Training';
+
+            trainingStatus.style.display = 'none';
+            completedStatus.style.display = 'block';
+        }
+
+        function showReadyStatus() {
+            enableAllLinks();
+
+            trainBtn.disabled = false;
+            trainSpinner.style.display = 'none';
+            trainBtn.innerHTML = 'Start Training';
+
+            readyStatus.style.display = 'block';
+            trainingStatus.style.display = 'none';
+            completedStatus.style.display = 'none';
+            trainingResults.style.display = 'none';
+        }
+
+        function showErrorStatus(errorMessage = 'An error occurred during training') {
+            enableAllLinks();
+
+            trainBtn.disabled = false;
+            trainSpinner.style.display = 'none';
+            trainBtn.innerHTML = 'Start Training';
+
+            if (progressInterval) {
+                clearInterval(progressInterval);
+            }
+
+            trainingResults.innerHTML = `
+                <div class="alert alert-danger">
+                    <h4>Training Failed</h4>
+                    <p>${errorMessage}. Please check your dataset and try again.</p>
+                    <button class="btn btn-outline-danger btn-sm" onclick="showReadyStatus()">
+                        <i class="fas fa-arrow-left"></i> Back to Training
+                    </button>
+                </div>`;
+            trainingResults.style.display = 'block';
+
+            readyStatus.style.display = 'none';
+            trainingStatus.style.display = 'none';
+            completedStatus.style.display = 'none';
+        }
+
+        function fetchProgress() {
+            fetch('/api/training_progress')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'error') {
+                        showErrorStatus(data.message || 'An error occurred during training');
+                        return;
+                    }
+
+                    progressBar.style.width = data.progress + '%';
+                    progressText.textContent = data.progress + '% completed';
+
+                    if (data.log && data.log.length > 0) {
+                        logMessages.innerHTML = data.log.join('<br>');
+                        logMessages.scrollTop = logMessages.scrollHeight;
+                    }
+
+                    if (data.progress >= 100) {
+                        clearInterval(progressInterval);
+                        setTimeout(() => {
+                            showCompletedStatus();
+                        }, 1000);
+                    }
+                })
+                .catch(error => {
+                    console.error('Progress error:', error);
+                    showErrorStatus('Failed to fetch training progress');
+                });
+        }
+
+        trainAgainBtn.addEventListener('click', function () {
+            showReadyStatus();
+            trainForm.reset();
+            document.getElementById('learning_rate').value = '0.0003';
+            document.getElementById('epochs').value = '10';
+            document.getElementById('batch_size').value = '32';
+            document.getElementById('train_split').value = '0.8';
+        });
+
+        window.showReadyStatus = showReadyStatus;
+    });
+
+    function disableAllLinks() {
+        document.querySelectorAll('a').forEach(link => {
+            link.setAttribute('data-original-href', link.getAttribute('href'));
+            link.removeAttribute('href');
+            link.classList.add('disabled');
+        });
+    }
+
+    function enableAllLinks() {
+        document.querySelectorAll('a').forEach(link => {
+            if (link.hasAttribute('data-original-href')) {
+                link.setAttribute('href', link.getAttribute('data-original-href'));
+                link.removeAttribute('data-original-href');
+                link.classList.remove('disabled');
+            }
+        });
+    }
+</script>
+{% endblock %}
