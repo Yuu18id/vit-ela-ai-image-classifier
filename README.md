@@ -1,6 +1,6 @@
 # AI Image Classifier with ViT and ELA
 
-A web application for image classification using Vision Transformer (ViT) with Error Level Analysis (ELA) preprocessing. This system is designed to detect image manipulation or classify images based on your custom dataset.
+A web application for image classification using Vision Transformer (ViT) with Error Level Analysis (ELA) preprocessing. This system is designed to detect ai-generated image or classify images based on your custom dataset.
 
 ## 🌟 Key Features
 
@@ -190,6 +190,7 @@ This project was developed as an undergraduate thesis by:
 
 
 **Disclaimer:** This is an academic project developed as part of an undergraduate thesis requirement. The software is provided "as-is" without warranty of any kind. The authors and Universitas Mikroskil Medan are not liable for any damages or issues arising from the use of this software.
+
 
 
 
