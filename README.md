@@ -150,10 +150,6 @@ After training completes or to use a previously trained model:
 
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
-### Terms of Use
-
-This software was developed as part of academic research at Universitas Mikroskil. The code is released under MIT License for educational, research, and non-commercial purposes.
-
 ## 📞 Support
 
 For questions or issues, please open an issue in this repository.
@@ -178,7 +174,8 @@ This project was developed as an undergraduate thesis by:
 | Yusra Budiman Hasibuan |[@yusrabudiman](https://github.com/yusrabudiman) |
 
 
-**Disclaimer:** This is an academic project developed as part of an undergraduate thesis requirement. The software is provided "as-is" without warranty of any kind. The authors and Universitas Mikroskil Medan are not liable for any damages or issues arising from the use of this software.
+**Disclaimer:** This is an academic project developed as part of an undergraduate thesis requirement. The software is provided "as-is" without warranty of any kind. The authors and Universitas Mikroskil are not liable for any damages or issues arising from the use of this software.
+
 
 
 
